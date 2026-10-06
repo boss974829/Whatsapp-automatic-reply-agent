@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+data/agent.db
+data/*.log
+contacts.json
+whatsapp-bridge/node_modules/
+whatsapp-bridge/auth/
+whatsapp-bridge/baileys_store.json
+*.pyc

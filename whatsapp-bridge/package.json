@@ -1,0 +1,16 @@
+{
+  "name": "whatsapp-automatic-reply-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Baileys session that forwards allowlisted chats to the Python agent",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "express": "^4.21.2",
+    "pino": "^9.6.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#10211c" />
+  <title>WhatsApp reply agent</title>
+  <style>
+    :root { color-scheme: dark; --ink:#e7f3ee; --muted:#9eb2a9; --line:rgba(255,255,255,.12); --glass:rgba(16,33,28,.72); --accent:#d7c4a2; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Outfit, Segoe UI, sans-serif; color:var(--ink); background:#071311; }
+    main { max-width: 880px; margin: 0 auto; padding: 20px 16px 48px; }
+    h1 { font-weight: 560; font-size: 1.6rem; margin: 0 0 6px; }
+    p { color: var(--muted); }
+    .card { background: var(--glass); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin: 12px 0; backdrop-filter: blur(16px); }
+    button, input, select, textarea { font: inherit; color: var(--ink); }
+    input, select, textarea { width: 100%; background: rgba(0,0,0,.25); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+    button { background: var(--accent); color: #1b1712; border: 0; border-radius: 999px; padding: 10px 14px; margin: 6px 6px 0 0; }
+    button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    li { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>WhatsApp reply agent</h1>
+    <p>Approve drafts from this phone. Auto-send stays off until you unpause.</p>
+    <section class="card" id="login">
+      <input id="password" type="password" placeholder="Dashboard password" />
+      <button onclick="signIn()">Open</button>
+    </section>
+    <section class="card" id="app" hidden>
+      <div class="row">
+        <button id="pause" onclick="togglePause()">Pause</button>
+        <button class="ghost" onclick="refresh()">Refresh</button>
+      </div>
+      <h2>Held replies</h2>
+      <ul id="holds"></ul>
+      <h2>Try a message</h2>
+      <input id="sim-chat" placeholder="9198xxxxxxxx" />
+      <textarea id="sim-body" rows="3" placeholder="What they sent"></textarea>
+      <button onclick="simulate()">Simulate</button>
+      <pre id="sim-out"></pre>
+    </section>
+  </main>
+  <script>
+    let token = localStorage.getItem("wa-token") || "";
+    const headers = () => ({ "Content-Type": "application/json", "X-Session": token });
+    async function signIn() {
+      const password = document.getElementById("password").value;
+      const res = await fetch("/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+      if (!res.ok) return alert("Wrong password");
+      token = (await res.json()).token;
+      localStorage.setItem("wa-token", token);
+      document.getElementById("login").hidden = true;
+      document.getElementById("app").hidden = false;
+      refresh();
+    }
+    async function refresh() {
+      const res = await fetch("/api/state", { headers: headers() });
+      if (res.status === 401) return;
+      const data = await res.json();
+      document.getElementById("pause").textContent = data.paused ? "Unpause auto-reply" : "Pause auto-reply";
+      document.getElementById("holds").innerHTML = data.holds.map(item => `
+        <li><strong>${item.name || item.chat_id}</strong> · ${item.reason}<br>
+        Them: ${item.incoming}<br>Draft: ${item.draft || "(empty)"}
+        <div class="row">
+          <button onclick="sendHold(${item.id})">Send</button>
+          <button class="ghost" onclick="dismiss(${item.id})">Dismiss</button>
+        </div></li>`).join("") || "<li>Nothing waiting.</li>";
+    }
+    async function togglePause() {
+      const state = await (await fetch("/api/state", { headers: headers() })).json();
+      await fetch("/api/pause", { method: "POST", headers: headers(), body: JSON.stringify({ paused: !state.paused }) });
+      refresh();
+    }
+    async function sendHold(id) {
+      await fetch(`/api/holds/${id}/send`, { method: "POST", headers: headers(), body: "{}" });
+      refresh();
+    }
+    async function dismiss(id) {
+      await fetch(`/api/holds/${id}/dismiss`, { method: "POST", headers: headers() });
+      refresh();
+    }
+    async function simulate() {
+      const body = { chat_id: document.getElementById("sim-chat").value, name: "Test", body: document.getElementById("sim-body").value };
+      const res = await fetch("/simulate", { method: "POST", headers: headers(), body: JSON.stringify(body) });
+      document.getElementById("sim-out").textContent = JSON.stringify(await res.json(), null, 2);
+      refresh();
+    }
+    if (token) signInExisting();
+    async function signInExisting() {
+      const res = await fetch("/api/state", { headers: headers() });
+      if (res.ok) { document.getElementById("login").hidden = true; document.getElementById("app").hidden = false; refresh(); }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "away": "Message dekh liya. Free hote hi reply karta hoon.",
+  "keywords": [
+    {
+      "match": ["brochure", "price list", "catalogue"],
+      "reply": "Brochure bhej deta hoon, thodi der mein."
+    },
+    {
+      "match": ["reached", "where are you", "kahan ho"],
+      "reply": "Raste mein hoon. Pahunchte hi bataata hoon."
+    }
+  ]
+}
